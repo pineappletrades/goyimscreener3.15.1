@@ -41,4 +41,26 @@ jobs:
         run: |
           cd $env:APPDIR
           python -m pip install --upgrade pip
-          pip install
+          pip install -r requirements.txt pyinstaller
+
+      - name: Build Goyim Screener.exe
+        run: |
+          cd $env:APPDIR
+          pyinstaller build/ema_zone.spec --noconfirm --clean
+
+      - name: Self-test the packaged app
+        run: |
+          cd $env:APPDIR
+          $exe = Get-ChildItem dist -Recurse -Filter *.exe | Select-Object -First 1
+          $p = Start-Process -FilePath $exe.FullName -ArgumentList "--selftest" -Wait -PassThru
+          Get-Content selftest.txt
+          if ($p.ExitCode -ne 0) { throw "Self-test failed (exit $($p.ExitCode))" }
+
+      - name: Zip
+        run: Compress-Archive -Path "$env:APPDIR/dist/*" -DestinationPath "Windows-app.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Windows-app
+          path: Windows-app.zip
+          retention-days: 30
